@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Community Map</title>
+
+    <!-- MapLibre CSS -->
+    <link
+        href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"
+        rel="stylesheet"
+    />
+
+    <!-- MapLibre JavaScript -->
+    <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+
+    <!-- Papa Parse JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- This is where the map appears -->
+    <div id="map"></div>
+
+    <script>
+
+        // Replace this with your Google Sheets CSV URL
+        const csvURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOmFRs9WqWbsV18n0Ulujr-yNGiyEfFmiDzKQEXBuDBh-Cak-ZQdhczddXWLnRQcDk_1dmAawjtqb6/pub?output=csv';
+
+        // Create the map
+        const map = new maplibregl.Map({
+            container: 'map',
+
+            // OpenFreeMap basemap
+            style: 'https://tiles.openfreemap.org/styles/positron',
+
+            // Starting position [longitude, latitude]
+            center: [-73.9209, 41.2901],
+
+            zoom: 8
+        });
+
+        // Load the Google Sheet
+        Papa.parse(csvURL, {
+            download: true,
+            header: true,
+
+            complete: function(results) {
+
+                // Convert Google Sheet rows into GeoJSON
+                const geojson = {
+                    type: "FeatureCollection",
+
+                    features: results.data
+                        .filter(row => row.Latitude && row.Longitude)
+                        .map(row => ({
+                            type: "Feature",
+
+                            geometry: {
+                                type: "Point",
+                                coordinates: [
+                                    parseFloat(row.Longitude),
+                                    parseFloat(row.Latitude)
+                                ]
+                            },
+
+                            properties: row
+                        }))
+                };
+
+                // Wait for the map to load
+                map.on('load', () => {
+
+                    // Add the points as a data source
+                    map.addSource('places', {
+                        type: 'geojson',
+                        data: geojson
+                    });
+
+                    // Draw circles for each point
+                    map.addLayer({
+                        id: 'places',
+                        type: 'circle',
+                        source: 'places',
+
+                        paint: {
+                            'circle-radius': 6,
+                            'circle-color': '#3b82f6',
+                            'circle-stroke-width': 1,
+                            'circle-stroke-color': '#ffffff'
+                        }
+                    });
+
+                    // Change cursor when hovering
+                    map.on('mouseenter', 'places', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+
+                    map.on('mouseleave', 'places', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+
+                    // Show popup when clicking a point
+                    map.on('click', 'places', (e) => {
+
+                        const props = e.features[0].properties;
+
+                        new maplibregl.Popup()
+                            .setLngLat(e.lngLat)
+                            .setHTML(`
+                                <h3>${props.Name || ''}</h3>
+                                <p>${props.Description || ''}</p>
+                                <strong>${props.Category || ''}</strong>
+                            `)
+                            .addTo(map);
+
+                    });
+
+                });
+
+            }
+
+        });
+
+    </script>
+
+</body>
+</html>
