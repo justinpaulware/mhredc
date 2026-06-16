@@ -134,6 +134,34 @@
 
         });
 
+const restURL =
+"https://services6.arcgis.com/EbVsqZ18sv1kVJ3k/arcgis/rest/services/NYS_Civil_Boundaries/FeatureServer/query?where=1=1&outFields=*&f=geojson";
+
+fetch(restURL)
+    .then(response => response.json())
+    .then(data => {
+
+        map.on('load', () => {
+
+            map.addSource('rest-layer', {
+                type: 'geojson',
+                data: data
+            });
+
+            map.addLayer({
+                id: 'rest-layer',
+                type: 'fill',   // change depending on geometry type
+                source: 'rest-layer',
+                paint: {
+                    'fill-color': '#f59e0b',
+                    'fill-opacity': 0.4
+                }
+            });
+
+        });
+
+    });
+        
     </script>
 
 </body>
