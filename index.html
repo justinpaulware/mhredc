@@ -1,55 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>MHREDC / Transformational Regional Initiative</title>
+<meta charset="utf-8" />
+<title>Planning Map</title>
 
-    <!-- MapLibre CSS -->
-    <link
-        href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css"
-        rel="stylesheet"
-    />
+<!-- MapLibre -->
+<link href="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
 
-    <!-- MapLibre JavaScript -->
-    <script src="https://unpkg.com/maplibre-gl@5.6.2/dist/maplibre-gl.js"></script>
+<!-- Papa Parse -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-    <!-- Papa Parse JavaScript -->
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+body {
+    margin: 0;
+    font-family: sans-serif;
+}
 
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-        }
-
-       #sidebar {
+/* Sidebar */
+#sidebar {
     position: absolute;
     top: 0;
     left: 0;
-    width: 220px;
+    width: 240px;
     height: 100vh;
     background: white;
     padding: 12px;
     z-index: 1;
-    font-family: sans-serif;
     border-right: 1px solid #ddd;
 }
 
+/* Map */
 #map {
     position: absolute;
     top: 0;
-    left: 220px;
+    left: 240px;
     right: 0;
     bottom: 0;
 }
-    </style>
+</style>
 </head>
 
 <body>
 
-    <!-- This is where the map appears -->
-    
-   <div id="sidebar">
+<!-- SIDEBAR -->
+<div id="sidebar">
     <h3>Layers</h3>
 
     <label>
@@ -65,174 +60,135 @@
     </label>
 </div>
 
+<!-- MAP -->
 <div id="map"></div>
 
-    <script>
+<script>
 
-        // Replace this with your Google Sheets CSV URL
-        const csvURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTOmFRs9WqWbsV18n0Ulujr-yNGiyEfFmiDzKQEXBuDBh-Cak-ZQdhczddXWLnRQcDk_1dmAawjtqb6/pub?output=csv';
+const csvURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTOmFRs9WqWbsV18n0Ulujr-yNGiyEfFmiDzKQEXBuDBh-Cak-ZQdhczddXWLnRQcDk_1dmAawjtqb6/pubhtml";
 
-        // Create the map
-        const map = new maplibregl.Map({
-            container: 'map',
+const restURL = "https://services6.arcgis.com/EbVsqZ18sv1kVJ3k/arcgis/rest/services/NYS_Civil_Boundaries/FeatureServer/2/query?where=1=1&outFields=*&f=geojson";
 
-            // OpenFreeMap basemap
-            style: 'https://tiles.openfreemap.org/styles/positron',
+const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: [-73.9209, 41.2901],
+    zoom: 8 // Change zoom level
+});
 
-            // Starting position [longitude, latitude]
-            center: [-73.9209, 41.2901],
+let sheetLayerLoaded = false;
+let restLayerLoaded = false;
 
-            zoom: 8
-        });
+/* =========================
+   LOAD MAP
+========================= */
 
-        // Load the Google Sheet
-        Papa.parse(csvURL, {
-            download: true,
-            header: true,
+map.on('load', () => {
 
-            complete: function(results) {
+    /* =========================
+       1. GOOGLE SHEET LAYER
+    ========================= */
 
-                // Convert Google Sheet rows into GeoJSON
-                const geojson = {
-                    type: "FeatureCollection",
+    Papa.parse(csvURL, {
+        download: true,
+        header: true,
 
-                    features: results.data
-                        .filter(row => row.Latitude && row.Longitude)
-                        .map(row => ({
-                            type: "Feature",
+        complete: function(results) {
 
-                            geometry: {
-                                type: "Point",
-                                coordinates: [
-                                    parseFloat(row.Longitude),
-                                    parseFloat(row.Latitude)
-                                ]
-                            },
+            const geojson = {
+                type: "FeatureCollection",
+                features: results.data
+                    .filter(r => r.Latitude && r.Longitude)
+                    .map(r => ({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [
+                                parseFloat(r.Longitude),
+                                parseFloat(r.Latitude)
+                            ]
+                        },
+                        properties: r
+                    }))
+            };
 
-                            properties: row
-                        }))
-                };
-
-                // Wait for the map to load
-                map.on('load', () => {
-
-                    // Add the points as a data source
-                    map.addSource('places', {
-                        type: 'geojson',
-                        data: geojson
-                    });
-
-                    // Draw circles for each point
-                    map.addLayer({
-                        id: 'places',
-                        type: 'circle',
-                        source: 'places',
-
-                        paint: {
-                            'circle-radius': 6,
-                            'circle-color': '#3b82f6',
-                            'circle-stroke-width': 1,
-                            'circle-stroke-color': '#ffffff'
-                        }
-                    });
-
-                    // Change cursor when hovering
-                    map.on('mouseenter', 'places', () => {
-                        map.getCanvas().style.cursor = 'pointer';
-                    });
-
-                    map.on('mouseleave', 'places', () => {
-                        map.getCanvas().style.cursor = '';
-                    });
-
-                    // Show popup when clicking a point
-                    map.on('click', 'places', (e) => {
-
-                        const props = e.features[0].properties;
-
-                        new maplibregl.Popup()
-                            .setLngLat(e.lngLat)
-                            .setHTML(`
-                                <h3>${props.Name || ''}</h3>
-                                <p>${props.Description || ''}</p>
-                                <strong>${props.Category || ''}</strong>
-                            `)
-                            .addTo(map);
-
-                    });
-
-                });
-
-            }
-
-        });
-
-
-        
-// New York State Towns    
-const restURL =
-"https://services6.arcgis.com/EbVsqZ18sv1kVJ3k/arcgis/rest/services/NYS_Civil_Boundaries/FeatureServer/5/query?where=1=1&outFields=*&f=geojson";
-
-fetch(restURL)
-    .then(response => response.json())
-    .then(data => {
-
-        map.on('load', () => {
-
-            map.addSource('rest-layer', {
+            map.addSource('sheet-data', {
                 type: 'geojson',
-                data: data
+                data: geojson
             });
 
             map.addLayer({
-                id: 'rest-layer',
-                type: 'fill',   // change depending on geometry type
-                source: 'rest-layer',
+                id: 'sheet-layer',
+                type: 'circle',
+                source: 'sheet-data',
                 paint: {
-                    'fill-color': '#ffffff',
-                    'fill-opacity': 0.3
+                    'circle-radius': 6,
+                    'circle-color': '#2563eb',
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': '#fff'
                 }
             });
 
-        });
+            sheetLayerLoaded = true;
 
+        }
     });
 
-        
-// New York State Counties
-const restURL =
-"https://services6.arcgis.com/EbVsqZ18sv1kVJ3k/arcgis/rest/services/NYS_Civil_Boundaries/FeatureServer/2/query?where=1=1&outFields=*&f=geojson";
+    /* =========================
+       2. REST LAYER
+    ========================= */
 
-fetch(restURL)
-    .then(response => response.json())
-    .then(data => {
+    fetch(restURL)
+        .then(r => r.json())
+        .then(data => {
 
-        map.on('load', () => {
-
-            map.addSource('rest-layer', {
+            map.addSource('rest-data', {
                 type: 'geojson',
                 data: data
             });
 
             map.addLayer({
                 id: 'rest-layer',
-                type: 'fill',   // change depending on geometry type
-                source: 'rest-layer',
+                type: 'fill',
+                source: 'rest-data',
                 paint: {
                     'fill-color': '#f59e0b',
-                    'fill-opacity': 0.4
+                    'fill-opacity': 0.3,
+                    'fill-outline-color': '#b45309'
                 }
             });
 
+            restLayerLoaded = true;
+
         });
 
-    });
+    /* =========================
+       3. UI CONTROLS
+    ========================= */
 
+    function toggleLayer(id, visible) {
+        if (!map.getLayer(id)) return;
 
+        map.setLayoutProperty(
+            id,
+            'visibility',
+            visible ? 'visible' : 'none'
+        );
+    }
 
+    document.getElementById('toggle-sheets')
+        .addEventListener('change', (e) => {
+            toggleLayer('sheet-layer', e.target.checked);
+        });
 
-        
-    </script>
+    document.getElementById('toggle-rest')
+        .addEventListener('change', (e) => {
+            toggleLayer('rest-layer', e.target.checked);
+        });
+
+});
+
+</script>
 
 </body>
 </html>
