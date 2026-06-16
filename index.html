@@ -133,6 +133,37 @@
             }
 
         });
+
+
+// New York State Towns    
+const restURL =
+"https://services6.arcgis.com/EbVsqZ18sv1kVJ3k/arcgis/rest/services/NYS_Civil_Boundaries/FeatureServer/5/query?where=1=1&outFields=*&f=geojson";
+
+fetch(restURL)
+    .then(response => response.json())
+    .then(data => {
+
+        map.on('load', () => {
+
+            map.addSource('rest-layer', {
+                type: 'geojson',
+                data: data
+            });
+
+            map.addLayer({
+                id: 'rest-layer',
+                type: 'fill',   // change depending on geometry type
+                source: 'rest-layer',
+                paint: {
+                    'fill-color': '#ffffff',
+                    'fill-opacity': 0.3
+                }
+            });
+
+        });
+
+    });
+
         
 // New York State Counties
 const restURL =
@@ -163,34 +194,10 @@ fetch(restURL)
 
     });
 
-// New York State    
-const restURL =
-"https://services6.arcgis.com/EbVsqZ18sv1kVJ3k/arcgis/rest/services/NYS_Civil_Boundaries/FeatureServer/5/query?where=1=1&outFields=*&f=geojson";
 
-fetch(restURL)
-    .then(response => response.json())
-    .then(data => {
 
-        map.on('load', () => {
 
-            map.addSource('rest-layer', {
-                type: 'geojson',
-                data: data
-            });
-
-            map.addLayer({
-                id: 'rest-layer',
-                type: 'fill',   // change depending on geometry type
-                source: 'rest-layer',
-                paint: {
-                    'fill-color': '#ffffff',
-                    'fill-opacity': 0.3
-                }
-            });
-
-        });
-
-    });
+        
     </script>
 
 </body>
