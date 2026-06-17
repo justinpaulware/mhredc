@@ -88,7 +88,6 @@ const map = new maplibregl.Map({
 
 let sheetLayerLoaded = false;
 let restLayerLoaded = false;
-let restLayerLoaded = false;
     
 /* =========================
    LOAD MAP
@@ -173,35 +172,6 @@ map.on('load', () => {
 
         });
 
-
-    /* =========================
-       2. REST LAYER
-    ========================= */
-
-    fetch(restURL)
-        .then(r => r.json())
-        .then(data => {
-
-            map.addSource('rest-data', {
-                type: 'geojson',
-                data: data
-            });
-
-            map.addLayer({
-                id: 'rest-layer',
-                type: 'fill',
-                source: 'rest-data',
-                paint: {
-                    'fill-color': '#f59e0b',
-                    'fill-opacity': 0.3,
-                    'fill-outline-color': '#b45309'
-                }
-            });
-
-            restLayerLoaded = true;
-
-        });
-    
     /* =========================
        3. UI CONTROLS
     ========================= */
